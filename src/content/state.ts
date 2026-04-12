@@ -8,7 +8,7 @@ import {
     VideoInfo,
 } from "../types";
 import { sourceId } from "../utils/injectedScriptMessageUtils";
-import { logLifecycle } from "../utils/logger";
+import { logDebug, logLifecycle } from "../utils/logger";
 import { getContentApp } from "./app";
 import { CONTENT_EVENTS } from "./app/events";
 import { ContentAppState } from "./app/types";
@@ -178,7 +178,7 @@ export function setupPageLoadingListener(): void {
         if (resolved) return;
         resolved = true;
         const elapsed = Math.round(performance.now() - t0);
-        console.debug(`${TAG} Page ready (${reason}) at +${elapsed}ms`);
+        logDebug(`${TAG} Page ready (${reason}) at +${elapsed}ms`);
         logLifecycle("pageReady/resolved", {
             reason,
             elapsed,
@@ -193,11 +193,23 @@ export function setupPageLoadingListener(): void {
 
     window.addEventListener("message", (e: MessageEvent) => {
         if (e.data?.source === sourceId && e.data?.type === "pageReady") {
+            const mainWorldDetails = e.data?.details && typeof e.data.details === "object"
+                ? e.data.details as Record<string, unknown>
+                : {};
+            const forwardedStage = typeof mainWorldDetails.stage === "string"
+                ? mainWorldDetails.stage
+                : "main/pageReadyDetected";
+            const resolveReason = forwardedStage === "main/pageReadyTimeout"
+                ? "MAIN world pageReady timeout"
+                : "vue-mount signal from MAIN world";
+
+            logLifecycle(forwardedStage, mainWorldDetails);
             logLifecycle("pageReady/messageReceived", {
                 source: e.data?.source,
                 messageType: e.data?.type,
+                mainWorldStage: forwardedStage,
             });
-            markReady("vue-mount signal from MAIN world");
+            markReady(resolveReason);
         }
     });
 

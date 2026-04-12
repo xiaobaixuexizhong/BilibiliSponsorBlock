@@ -129,8 +129,18 @@ async function addMid() {
  */
 function detectVueMountAndNotify(): void {
     const t0 = performance.now();
-    const TAG = "[BSB-pageReady]";
     let checkCount = 0;
+
+    const notifyPageReady = (details: Record<string, unknown>) => {
+        window.postMessage(
+            {
+                source: sourceId,
+                type: "pageReady",
+                details,
+            },
+            "/"
+        );
+    };
 
     const check = () => {
         checkCount++;
@@ -140,29 +150,29 @@ function detectVueMountAndNotify(): void {
 
         const elapsed = Math.round(performance.now() - t0);
         if (vue2 || vue3) {
-            console.log("[BSB lifecycle]", {
-                stage: "main/pageReadyDetected",
-                vue2,
-                vue3,
-                elapsed,
-                checkCount,
-                readyState: document.readyState,
-            });
             setTimeout(() => {
-                window.postMessage({ source: sourceId, type: "pageReady" }, "/");
+                notifyPageReady({
+                    stage: "main/pageReadyDetected",
+                    vue2,
+                    vue3,
+                    elapsed,
+                    checkCount,
+                    readyState: document.readyState,
+                });
             }, 500);
             return;
         }
 
         // 30 seconds timeout
         if (elapsed >= 30000) {
-            console.log("[BSB lifecycle]", {
+            notifyPageReady({
                 stage: "main/pageReadyTimeout",
+                vue2,
+                vue3,
                 elapsed,
                 checkCount,
                 readyState: document.readyState,
             });
-            window.postMessage({ source: sourceId, type: "pageReady" }, "/");
             return;
         }
 

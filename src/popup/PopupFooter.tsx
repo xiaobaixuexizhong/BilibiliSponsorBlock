@@ -2,7 +2,9 @@ import * as React from "react";
 import Config from "../config";
 import { showDonationLink } from "../config/configUtils";
 
-interface PopupFooterProps {}
+interface PopupFooterProps {
+    copyPageLogs: () => Promise<void>;
+}
 
 interface PopupFooterState {}
 
@@ -41,6 +43,12 @@ class PopupFooter extends React.Component<PopupFooterProps, PopupFooterState> {
                         {chrome.i18n.getMessage("Donate")}
                     </a>
                 )}
+                <button
+                    className="sbFooterButton"
+                    onClick={() => void this.props.copyPageLogs()}
+                >
+                    {chrome.i18n.getMessage("copyPageLogs")}
+                </button>
 
                 {/* if the don't show notice again variable is true, an option to disable should be available */}
                 <button

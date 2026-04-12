@@ -7,12 +7,29 @@ import {
 } from "./requests/type/BilibiliRequestType";
 import { AID, BVID, CID } from "./types";
 declare global {
+    interface SponsorBlockLifecycleLogEntry {
+        time: string;
+        stage: string;
+        hidden?: boolean;
+        readyState?: DocumentReadyState;
+        details: Record<string, unknown>;
+    }
+
+    interface SponsorBlockLifecycleStageSummary {
+        count: number;
+        firstTime: string;
+        lastTime: string;
+        hiddenTransitions: number;
+        readyStates: DocumentReadyState[];
+    }
+
     interface Window {
         SB: typeof SBObject;
         SBLogs: {
             debug: string[];
             warn: string[];
-            lifecycle: Array<Record<string, unknown>>;
+            lifecycle: SponsorBlockLifecycleLogEntry[];
+            lifecycleSummary: Record<string, SponsorBlockLifecycleStageSummary>;
         };
         __INITIAL_STATE__?: {
             bvid: BVID;

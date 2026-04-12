@@ -1457,5 +1457,20 @@
     },
     "cacheManagementTitle": {
         "message": "缓存管理"
+    },
+    "lifecycleDebug": {
+        "message": "调试日志输出到控制台"
+    },
+    "lifecycleDebugDescription": {
+        "message": "关闭时仅在页面内存中保留日志；开启后会额外把生命周期和调试日志输出到控制台。"
+    },
+    "copyPageLogs": {
+        "message": "复制页面日志"
+    },
+    "copyPageLogsSuccess": {
+        "message": "已复制当前页面日志"
+    },
+    "copyPageLogsFailed": {
+        "message": "复制页面日志失败"
     }
 }

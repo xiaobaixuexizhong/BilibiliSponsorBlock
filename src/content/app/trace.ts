@@ -1,5 +1,6 @@
 import { CommandPayload } from "./commandBus";
 import { ContentEventMeta } from "./types";
+import { shouldEmitConsoleLogs } from "../../utils/logger";
 
 declare const process:
     | {
@@ -16,6 +17,10 @@ function isDevelopmentBuild(): boolean {
     }
 
     return typeof process !== "undefined" && process?.env?.NODE_ENV !== "production";
+}
+
+function shouldConsoleTrace(): boolean {
+    return shouldEmitConsoleLogs();
 }
 
 function summarizeValue(value: unknown): unknown {
@@ -67,19 +72,23 @@ export function createContentTrace() {
                 return;
             }
 
-            console.debug("[BSB content command]", String(command), summarizeValue(payload));
+            if (shouldConsoleTrace()) {
+                console.debug("[BSB content command]", String(command), summarizeValue(payload));
+            }
         },
         logEvent<K extends PropertyKey>(event: K, payload: unknown, meta: ContentEventMeta): void {
             if (!enabled) {
                 return;
             }
 
-            console.debug("[BSB content event]", {
-                time: new Date(meta.timestamp).toISOString(),
-                event: String(event),
-                source: meta.source,
-                payload: summarizeValue(payload),
-            });
+            if (shouldConsoleTrace()) {
+                console.debug("[BSB content event]", {
+                    time: new Date(meta.timestamp).toISOString(),
+                    event: String(event),
+                    source: meta.source,
+                    payload: summarizeValue(payload),
+                });
+            }
         },
     };
 }

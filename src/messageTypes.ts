@@ -18,6 +18,7 @@ interface DefaultMessage {
     | "isChannelWhitelisted"
     | "submitTimes"
     | "refreshSegments"
+    | "getLogs"
     | "closePopup";
 }
 
@@ -137,6 +138,27 @@ export interface IsChannelWhitelistedResponse {
     value: boolean;
 }
 
+export interface PageLogsResponse {
+    page: {
+        url: string;
+        title: string;
+        hidden: boolean;
+        readyState: DocumentReadyState;
+        capturedAt: string;
+    };
+    counts: {
+        debug: number;
+        warn: number;
+        lifecycle: number;
+    };
+    lifecycleSummary: Record<string, SponsorBlockLifecycleStageSummary>;
+    logs: {
+        debug: string[];
+        warn: string[];
+        lifecycle: SponsorBlockLifecycleLogEntry[];
+    };
+}
+
 export type MessageResponse =
     | IsInfoFoundMessageResponse
     | GetVideoIdResponse
@@ -148,6 +170,7 @@ export type MessageResponse =
     | VoteResponse
     | ImportSegmentsResponse
     | RefreshSegmentsResponse
+    | PageLogsResponse
     | PortVideo;
 
 export interface VoteResponse {

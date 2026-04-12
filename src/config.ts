@@ -94,6 +94,7 @@ interface SBConfig {
     showPortVideoButton: boolean;
     cleanPopup: boolean;
     enableCache: boolean;
+    lifecycleDebug: boolean;
 
     dynamicAndCommentSponsorWhitelistedChannels: boolean;
     dynamicAndCommentSponsorBlocker: boolean;
@@ -353,6 +354,7 @@ const syncDefaults = {
     showPortVideoButton: true,
     cleanPopup: false,
     enableCache: true,
+    lifecycleDebug: false,
 
     dynamicAndCommentSponsorWhitelistedChannels: false,
     dynamicAndCommentSponsorBlocker: false,

@@ -574,7 +574,23 @@ select {
 	font-weight: 500;
 	margin: 2px 1px;
 }
+#sbFooter .sbFooterButton {
+	transition: background 0.3s ease !important;
+	color: var(--sb-main-fg-color);
+	display: inline-block;
+	text-decoration: none;
+	border-radius: 4px;
+	background-color: #333;
+	padding: 4px 8px;
+	font-weight: 500;
+	margin: 2px 1px;
+	border: none;
+	font: inherit;
+}
 #sbFooter a:hover {
+	background-color: #444;
+}
+#sbFooter .sbFooterButton:hover {
 	background-color: #444;
 }
 

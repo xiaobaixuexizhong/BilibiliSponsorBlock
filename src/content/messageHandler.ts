@@ -4,6 +4,7 @@ import { Message, MessageResponse } from "../messageTypes";
 import { checkPageForNewThumbnails } from "../thumbnail-utils/thumbnailManagement";
 import Utils from "../utils";
 import { importTimes } from "../utils/exporter";
+import { getLogsSnapshot } from "../utils/logger";
 import { getBilibiliVideoID } from "../utils/parseVideoID";
 import { checkVideoIDChange, getChannelIDInfo, getVideo, getVideoID } from "../utils/video";
 import { getContentApp } from "./app";
@@ -132,6 +133,26 @@ export function handleContentMessage(
             void app.commands.execute("segments/lookup", { keepOldSubmissions: false, ignoreServerCache: true });
 
             return;
+        case "getLogs": {
+            const logs = getLogsSnapshot();
+            sendResponse({
+                page: {
+                    url: document.URL,
+                    title: document.title,
+                    hidden: document.hidden,
+                    readyState: document.readyState,
+                    capturedAt: new Date().toISOString(),
+                },
+                counts: {
+                    debug: logs.debug.length,
+                    warn: logs.warn.length,
+                    lifecycle: logs.lifecycle.length,
+                },
+                lifecycleSummary: logs.lifecycleSummary,
+                logs,
+            });
+            return;
+        }
         case "unskip":
             void app.commands.execute("skip/unskip", {
                 segment: contentState.sponsorTimes.find((segment) => segment.UUID === request.UUID),

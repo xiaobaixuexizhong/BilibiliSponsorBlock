@@ -1462,5 +1462,20 @@
     },
     "dynamicAndCommentSponsorRegexPatternKeywordNumberDescription": {
         "message": "需累積匹配到指定數量的關鍵字後才會執行隱藏操作，否則僅添加標籤\n預設值為1, 即匹配到任意關鍵字立即隱藏"
+    },
+    "lifecycleDebug": {
+        "message": "將除錯日誌輸出到控制台"
+    },
+    "lifecycleDebugDescription": {
+        "message": "關閉時僅在頁面記憶體中保留日誌；開啟後會額外把生命週期與除錯日誌輸出到控制台。"
+    },
+    "copyPageLogs": {
+        "message": "複製頁面日誌"
+    },
+    "copyPageLogsSuccess": {
+        "message": "已複製目前頁面日誌"
+    },
+    "copyPageLogsFailed": {
+        "message": "複製頁面日誌失敗"
     }
 }

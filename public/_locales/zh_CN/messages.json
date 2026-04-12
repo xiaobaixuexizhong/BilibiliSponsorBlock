@@ -1463,5 +1463,20 @@
     },
     "dynamicAndCommentSponsorRegexPatternKeywordNumberDescription": {
         "message": "当匹配到的关键词到一定数量后才执行隐藏操作否则仅添加标签\n默认为1，即匹配到任意关键字就隐藏"
+    },
+    "lifecycleDebug": {
+        "message": "调试日志输出到控制台"
+    },
+    "lifecycleDebugDescription": {
+        "message": "关闭时仅在页面内存中保留日志；开启后会额外把生命周期和调试日志输出到控制台。"
+    },
+    "copyPageLogs": {
+        "message": "复制页面日志"
+    },
+    "copyPageLogsSuccess": {
+        "message": "已复制当前页面日志"
+    },
+    "copyPageLogsFailed": {
+        "message": "复制页面日志失败"
     }
 }

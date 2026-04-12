@@ -2,7 +2,7 @@ import { ConfigProvider, message, theme } from "antd";
 import * as React from "react";
 import Config from "../config";
 import { StorageChangesObject } from "../config/config";
-import { IsChannelWhitelistedResponse, IsInfoFoundMessageResponse, Message, PopupMessage } from "../messageTypes";
+import { IsChannelWhitelistedResponse, IsInfoFoundMessageResponse, Message, PageLogsResponse, PopupMessage } from "../messageTypes";
 import { NewVideoID, PortVideo, SponsorTime } from "../types";
 import { waitFor } from "../utils/index";
 import ControlMenu from "./ControlMenu";
@@ -186,6 +186,26 @@ function app() {
         chrome.runtime.sendMessage({ message: "openConfig", hash: location });
     }
 
+    async function copyPageLogs(): Promise<void> {
+        const response = (await sendTabMessageAsync({ message: "getLogs" })) as PageLogsResponse;
+        if (!response?.page) {
+            messageApi.error(chrome.i18n.getMessage("copyPageLogsFailed"));
+            return;
+        }
+
+        const exportPayload = {
+            exportedAt: new Date().toISOString(),
+            extensionVersion: chrome.runtime.getManifest().version,
+            page: response.page,
+            counts: response.counts,
+            lifecycleSummary: response.lifecycleSummary,
+            logs: response.logs,
+        };
+
+        copyToClipboard(JSON.stringify(exportPayload, null, 2));
+        messageApi.success(chrome.i18n.getMessage("copyPageLogsSuccess"));
+    }
+
     function sendTabMessage(data: Message, callback?) {
         messageHandler.query(
             {
@@ -310,7 +330,7 @@ function app() {
 
                         <UserWork messageApi={messageApi} copyToClipboard={copyToClipboard} />
 
-                        <PopupFooter />
+                        <PopupFooter copyPageLogs={copyPageLogs} />
                     </>
                 )}
             </div>
