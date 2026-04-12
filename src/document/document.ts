@@ -140,7 +140,14 @@ function detectVueMountAndNotify(): void {
 
         const elapsed = Math.round(performance.now() - t0);
         if (vue2 || vue3) {
-            console.debug(`${TAG} Vue mounted (vue2=${vue2}, vue3=${vue3}) at +${elapsed}ms after ${checkCount} checks`);
+            console.log("[BSB lifecycle]", {
+                stage: "main/pageReadyDetected",
+                vue2,
+                vue3,
+                elapsed,
+                checkCount,
+                readyState: document.readyState,
+            });
             setTimeout(() => {
                 window.postMessage({ source: sourceId, type: "pageReady" }, "/");
             }, 500);
@@ -149,7 +156,12 @@ function detectVueMountAndNotify(): void {
 
         // 30 seconds timeout
         if (elapsed >= 30000) {
-            console.warn(`${TAG} Vue mount not detected after ${elapsed}ms / ${checkCount} checks, sending pageReady anyway`);
+            console.log("[BSB lifecycle]", {
+                stage: "main/pageReadyTimeout",
+                elapsed,
+                checkCount,
+                readyState: document.readyState,
+            });
             window.postMessage({ source: sourceId, type: "pageReady" }, "/");
             return;
         }

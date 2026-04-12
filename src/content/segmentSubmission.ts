@@ -33,6 +33,7 @@ import { durationEquals } from "../utils/duraionUtils";
 import { getErrorMessage, getFormattedTime } from "../utils/formating";
 import { getHash, getVideoIDHash, HashedValue } from "../utils/hash";
 import { getCidMapFromWindow } from "../utils/injectedScriptMessageUtils";
+import { logLifecycle } from "../utils/logger";
 import { getHashParams } from "../utils/pageUtils";
 import { generateUserID } from "../utils/setup";
 import { getBvID, getCid, getVideo, getVideoID, waitForVideo } from "../utils/video";
@@ -41,6 +42,7 @@ import { openWarningDialog } from "../utils/warnings";
 import { getContentApp } from "./app";
 import { CONTENT_EVENTS } from "./app/events";
 import { seekFrameByKeyPressListener } from "./hotkeyHandler";
+import { waitForPlayerUiReady } from "./playerUi";
 import { getSkipNoticeContentContainer } from "./skipNoticeContentContainer";
 import { contentState, syncContentStateStore } from "./state";
 
@@ -244,9 +246,17 @@ export function setupSkipButtonControlBar(): void {
             selectSegment: (UUID) => void getContentApp().commands.execute("segments/select", { UUID }),
         });
         patchUIState({ skipButtonControlBar: nextSkipButtonControlBar });
+        logLifecycle("skipButton/create", {
+            debugId: nextSkipButtonControlBar.debugId,
+        });
     }
 
-    getSkipButtonControlBar()?.attachToPage();
+    logLifecycle("skipButton/attachRequested", {
+        debugId: getSkipButtonControlBar()?.debugId,
+    });
+    void waitForPlayerUiReady()
+        .then(() => getSkipButtonControlBar()?.attachToPage())
+        .catch(() => undefined);
 }
 
 export function setupCategoryPill(): void {
@@ -424,8 +434,13 @@ export async function lockedCategoriesLookup(): Promise<void> {
 export async function updateVisibilityOfPlayerControlsButton(): Promise<void> {
     if (!getVideoID()) return;
 
+    await waitForPlayerUiReady();
     const playerButtons = await getPlayerButton().createButtons();
     patchUIState({ playerButtons: playerButtons ?? {} });
+    logLifecycle("playerButtons/updateVisibility", {
+        createdButtons: Object.keys(playerButtons ?? {}),
+        videoID: getVideoID(),
+    });
 
     updateSegmentSubmitting();
 }

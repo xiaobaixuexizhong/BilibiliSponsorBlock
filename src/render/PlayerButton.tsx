@@ -2,19 +2,23 @@ import * as React from "react";
 import { createRoot, Root } from "react-dom/client";
 import PlayerButtonGroupComponent from "../components/playerButtons/PlayerButtonGroupComponent";
 import Config from "../config";
+import { waitForPlayerUiReady } from "../content/playerUi";
 import { AnimationUtils } from "../utils/animationUtils";
-import { waitForElement } from "../utils/dom";
 import { waitFor } from "../utils/index";
-import { getControls } from "../utils/pageUtils";
+import { describeElement, logLifecycle } from "../utils/logger";
 import { SponsorTime } from "../types";
 
 const containerId = "bsbPlayerButtonContainer";
 
 export class PlayerButton {
+    static nextDebugId = 1;
+
+    readonly debugId: number;
     root: Root;
     container: HTMLElement;
     playerButtons: Record<string, { button: HTMLButtonElement; image: HTMLImageElement }>;
     creatingButtons: boolean;
+    creationPromise: Promise<Record<string, { button: HTMLButtonElement; image: HTMLImageElement }>> | null;
 
     buttonRef: React.RefObject<{ setSetgments(segments: SponsorTime[]): void }>;
 
@@ -35,6 +39,7 @@ export class PlayerButton {
         if (existingContainer) {
             existingContainer.remove();
         }
+        this.debugId = PlayerButton.nextDebugId++;
         this.startSegmentCallback = startSegmentCallback;
         this.cancelSegmentCallback = cancelSegmentCallback;
         this.deleteCallback = deleteCallback;
@@ -42,24 +47,46 @@ export class PlayerButton {
         this.infoCallback = infoCallback;
 
         this.creatingButtons = false;
+        this.creationPromise = null;
 
         this.buttonRef = React.createRef();
     }
 
     public async createButtons(): Promise<Record<string, { button: HTMLButtonElement; image: HTMLImageElement }>> {
         if (this.playerButtons) {
+            logLifecycle("playerButtons/create:reuse", {
+                debugId: this.debugId,
+            });
             return this.playerButtons;
         }
 
-        const controlsContainer = await waitForElement(".bpx-player-control-bottom-right").catch(() => null);
+        if (this.creationPromise) {
+            return this.creationPromise;
+        }
+
+        this.creationPromise = this.createButtonsInternal().finally(() => {
+            this.creationPromise = null;
+        });
+        return this.creationPromise;
+    }
+
+    private async createButtonsInternal(): Promise<Record<string, { button: HTMLButtonElement; image: HTMLImageElement }>> {
+        logLifecycle("playerButtons/create:start", {
+            debugId: this.debugId,
+        });
+        const { rightControls } = await waitForPlayerUiReady();
+        const controlsContainer = rightControls;
         if (!controlsContainer) {
             console.log("Could not find control button containers");
+            logLifecycle("playerButtons/create:missingControls", {
+                debugId: this.debugId,
+            });
             return null;
         }
 
         if (!this.container) {
             // wait for controls buttons to be loaded
-            await waitFor(() => getControls().childElementCount > 4).catch(() => {
+            await waitFor(() => controlsContainer.childElementCount > 4).catch(() => {
                 console.log("Get control chilren time out");
             });
 
@@ -84,6 +111,10 @@ export class PlayerButton {
                 />
             );
             controlsContainer.prepend(this.container);
+            logLifecycle("playerButtons/create:mounted", {
+                debugId: this.debugId,
+                controlsContainer: describeElement(controlsContainer),
+            });
 
             // wait a tick for React to render the buttons
             await this.waitForRender();
@@ -101,6 +132,10 @@ export class PlayerButton {
                 AnimationUtils.setupAutoHideAnimation(this.playerButtons.info.button, this.container);
             }
             this.creatingButtons = false;
+            logLifecycle("playerButtons/create:ready", {
+                debugId: this.debugId,
+                container: describeElement(this.container),
+            });
         }
         return this.playerButtons;
     }

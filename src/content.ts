@@ -1,6 +1,7 @@
 import Config from "./config";
 import { createContentApp } from "./content/app";
 import { CONTENT_EVENTS } from "./content/app/events";
+import { waitForPlayerUiReady } from "./content/playerUi";
 import {
     getPreviewBar,
     registerPreviewBarManager,
@@ -38,7 +39,7 @@ import {
 import { waitFor } from "./utils/";
 import { cleanPage } from "./utils/cleanup";
 import { GenericUtils } from "./utils/genericUtils";
-import { logDebug } from "./utils/logger";
+import { describeElement, describeSelector, describeVideo, logDebug, logLifecycle } from "./utils/logger";
 import { getControls, getProgressBar } from "./utils/pageUtils";
 import {
     detectPageType,
@@ -65,6 +66,12 @@ if (getPageType() === PageType.Unsupported || getPageType() === PageType.Live) {
 
 function init(): void {
     cleanPage();
+    logLifecycle("content/init", {
+        pageType: getPageType(),
+        pageLoaded: getPageLoaded(),
+        controls: describeSelector(".bpx-player-control-bottom-right"),
+        progress: describeSelector(".bpx-player-progress-schedule"),
+    });
 
     if (!lifecycleRegistered) {
         lifecycleRegistered = true;
@@ -122,8 +129,18 @@ function init(): void {
         (document.hidden && getPageType() == PageType.Video) ||
         [PageType.Video, PageType.Festival].includes(getPageType())
     ) {
-        document.addEventListener("visibilitychange", () => videoElementChange(true, getVideo()), { once: true });
-        window.addEventListener("mouseover", () => videoElementChange(true, getVideo()), { once: true });
+        document.addEventListener("visibilitychange", () => {
+            logLifecycle("content/visibilitychange.once", {
+                video: describeVideo(getVideo()),
+            });
+            videoElementChange(true, getVideo());
+        }, { once: true });
+        window.addEventListener("mouseover", () => {
+            logLifecycle("content/mouseover.once", {
+                video: describeVideo(getVideo()),
+            });
+            videoElementChange(true, getVideo());
+        }, { once: true });
     }
 
     setupVideoModule();
@@ -188,8 +205,18 @@ function resetValues() {
 }
 
 async function videoIDChange(): Promise<void> {
+    logLifecycle("content/videoIDChange:start", {
+        videoID: getVideoID(),
+        previewBarPresent: getPreviewBar() !== null,
+        controls: describeSelector(".bpx-player-control-bottom-right"),
+        progress: describeSelector(".bpx-player-progress-schedule"),
+    });
+
     if (getPreviewBar() === null) {
-        waitFor(getControls).then(() => {
+        waitFor(getControls).then((controls) => {
+            logLifecycle("content/videoIDChange:controlsReady", {
+                controls: describeElement(controls),
+            });
             void app.commands.execute("ui/createPreviewBar", undefined);
         });
     }
@@ -206,12 +233,24 @@ async function videoIDChange(): Promise<void> {
     contentState.sponsorTimesSubmitting = [];
     void app.commands.execute("segments/updateSubmitting", { getFromConfig: true });
 
-    await waitFor(() => document.querySelector(".bpx-player-loading-panel.bpx-state-loading"), 5000, 5);
-    await waitFor(getProgressBar, 24 * 60 * 60, 500);
+    const loadingPanel = await waitFor(() => document.querySelector(".bpx-player-loading-panel.bpx-state-loading"), 5000, 5)
+        .catch(() => null);
+    logLifecycle("content/videoIDChange:loadingPanelWaitFinished", {
+        found: Boolean(loadingPanel),
+        loadingPanel: describeElement(loadingPanel),
+    });
+
+    const progressBar = await waitFor(getProgressBar, 24 * 60 * 60, 500);
+    logLifecycle("content/videoIDChange:progressReady", {
+        progressBar: describeElement(progressBar),
+    });
 
     void app.commands.execute("ui/updatePlayerButtons", undefined);
     void app.commands.execute("ui/checkPreviewBarState", undefined);
     void app.commands.execute("ui/setupDescriptionPill", undefined);
+    logLifecycle("content/videoIDChange:uiCommandsDispatched", {
+        videoID: getVideoID(),
+    });
 
     if (
         [PageType.Video, PageType.List, PageType.Dynamic, PageType.Channel, PageType.Opus, PageType.Festival].includes(getPageType()) &&
@@ -244,24 +283,40 @@ async function channelIDChange(channelIDInfo: ChannelIDInfo) {
 }
 
 function videoElementChange(newVideo: boolean, video: HTMLVideoElement | null): void {
+    logLifecycle("content/videoElementChange:received", {
+        newVideo,
+        video: describeVideo(video),
+        controls: describeSelector(".bpx-player-control-bottom-left"),
+        progress: describeSelector(".bpx-player-progress-schedule"),
+    });
     if (!video) {
         return;
     }
 
-    waitFor(() => Config.isReady() && !document.hidden, 24 * 60 * 60, 500).then(() => {
+    waitFor(() => Config.isReady(), 24 * 60 * 60, 500).then(() => {
         if (newVideo) {
             setupVideoListeners(video);
-            void app.commands.execute("ui/setupSkipButtonControlBar", undefined);
-            void app.commands.execute("ui/setupCategoryPill", undefined);
-            void app.commands.execute("ui/setupDescriptionPill", undefined);
         }
 
-        void app.commands.execute("ui/updatePreviewBar", undefined);
-        void app.commands.execute("ui/checkPreviewBarState", undefined);
+        void waitForPlayerUiReady().then(() => {
+            logLifecycle("content/videoElementChange:readyForUi", {
+                newVideo,
+                video: describeVideo(video),
+            });
 
-        setTimeout(() => void app.commands.execute("ui/checkPreviewBarState", undefined), 100);
-        setTimeout(() => void app.commands.execute("ui/checkPreviewBarState", undefined), 1000);
-        setTimeout(() => void app.commands.execute("ui/checkPreviewBarState", undefined), 5000);
+            if (newVideo) {
+                void app.commands.execute("ui/setupSkipButtonControlBar", undefined);
+                void app.commands.execute("ui/setupCategoryPill", undefined);
+                void app.commands.execute("ui/setupDescriptionPill", undefined);
+            }
+
+            void app.commands.execute("ui/updatePreviewBar", undefined);
+            void app.commands.execute("ui/checkPreviewBarState", undefined);
+
+            setTimeout(() => void app.commands.execute("ui/checkPreviewBarState", undefined), 100);
+            setTimeout(() => void app.commands.execute("ui/checkPreviewBarState", undefined), 1000);
+            setTimeout(() => void app.commands.execute("ui/checkPreviewBarState", undefined), 5000);
+        });
     });
 }
 

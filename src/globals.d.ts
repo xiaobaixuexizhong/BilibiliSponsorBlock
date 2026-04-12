@@ -9,6 +9,11 @@ import { AID, BVID, CID } from "./types";
 declare global {
     interface Window {
         SB: typeof SBObject;
+        SBLogs: {
+            debug: string[];
+            warn: string[];
+            lifecycle: Array<Record<string, unknown>>;
+        };
         __INITIAL_STATE__?: {
             bvid: BVID;
             toBvid: BVID;

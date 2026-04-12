@@ -8,6 +8,7 @@ import {
     VideoInfo,
 } from "../types";
 import { sourceId } from "../utils/injectedScriptMessageUtils";
+import { logLifecycle } from "../utils/logger";
 import { getContentApp } from "./app";
 import { CONTENT_EVENTS } from "./app/events";
 import { ContentAppState } from "./app/types";
@@ -178,6 +179,10 @@ export function setupPageLoadingListener(): void {
         resolved = true;
         const elapsed = Math.round(performance.now() - t0);
         console.debug(`${TAG} Page ready (${reason}) at +${elapsed}ms`);
+        logLifecycle("pageReady/resolved", {
+            reason,
+            elapsed,
+        });
         contentState.pageLoaded = true;
         try {
             getContentApp().bus.emit(CONTENT_EVENTS.APP_PAGE_READY, { pageLoaded: true }, { source: "content/state" });
@@ -188,6 +193,10 @@ export function setupPageLoadingListener(): void {
 
     window.addEventListener("message", (e: MessageEvent) => {
         if (e.data?.source === sourceId && e.data?.type === "pageReady") {
+            logLifecycle("pageReady/messageReceived", {
+                source: e.data?.source,
+                messageType: e.data?.type,
+            });
             markReady("vue-mount signal from MAIN world");
         }
     });

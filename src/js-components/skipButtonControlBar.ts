@@ -1,10 +1,12 @@
 import Config from "../config";
 import { keybindToString } from "../config/config";
+import { waitForPlayerUiReady } from "../content/playerUi";
 import { getPageLoaded } from "../content/state";
 import { SegmentUUID, SponsorTime } from "../types";
 import { AnimationUtils } from "../utils/animationUtils";
 import { getSkippingText } from "../utils/categoryUtils";
 import { waitFor } from "../utils/index";
+import { describeElement, logLifecycle } from "../utils/logger";
 
 export interface SkipButtonControlBarProps {
     skip: (segment: SponsorTime) => void;
@@ -12,6 +14,9 @@ export interface SkipButtonControlBarProps {
 }
 
 export class SkipButtonControlBar {
+    static nextDebugId = 1;
+
+    readonly debugId: number;
     container: HTMLElement;
     skipButton: HTMLButtonElement;
     skipIcon: HTMLImageElement;
@@ -29,6 +34,7 @@ export class SkipButtonControlBar {
     skip: (segment: SponsorTime) => void;
 
     constructor(props: SkipButtonControlBarProps) {
+        this.debugId = SkipButtonControlBar.nextDebugId++;
         this.skip = props.skip;
 
         this.container = document.createElement("div");
@@ -72,18 +78,22 @@ export class SkipButtonControlBar {
     }
 
     async attachToPage(): Promise<void> {
+        logLifecycle("skipButton/attach:start", {
+            debugId: this.debugId,
+        });
         await waitFor(getPageLoaded, 10000, 10);
-        const mountingContainer = await this.getMountingContainer();
+        const { leftControls } = await waitForPlayerUiReady();
+        const mountingContainer = leftControls;
         // this.chapterText = document.querySelector(".ytp-chapter-container");
 
         if (mountingContainer && !mountingContainer.contains(this.container)) {
             mountingContainer.append(this.container);
             AnimationUtils.setupAutoHideAnimation(this.skipButton, mountingContainer, false, false);
+            logLifecycle("skipButton/attach:mounted", {
+                debugId: this.debugId,
+                mountingContainer: describeElement(mountingContainer),
+            });
         }
-    }
-
-    private async getMountingContainer(): Promise<HTMLElement> {
-        return waitFor(() => document.querySelector(".bpx-player-control-bottom-left"));
     }
 
     enable(segment: SponsorTime, duration?: number): void {

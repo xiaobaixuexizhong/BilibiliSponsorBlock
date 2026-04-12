@@ -15,6 +15,10 @@ export function getControls(): HTMLElement {
     return null;
 }
 
+export function getLeftControls(): HTMLElement {
+    return document.querySelector(".bpx-player-control-bottom-left");
+}
+
 export function getProgressBar(): HTMLElement {
     return document.querySelector(".bpx-player-progress-schedule");
 }

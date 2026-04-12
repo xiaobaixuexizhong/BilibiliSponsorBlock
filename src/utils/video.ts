@@ -8,6 +8,7 @@ import { waitFor } from "./";
 import { addCleanupListener, setupCleanupListener } from "./cleanup";
 import { getElement, isVisible, waitForElement } from "./dom";
 import { getPropertyFromWindow } from "./injectedScriptMessageUtils";
+import { describeElement, describeSelector, describeVideo, logLifecycle } from "./logger";
 import { getBilibiliVideoID } from "./parseVideoID";
 import { injectScript } from "./scriptInjector";
 import { parseBvidAndCidFromVideoId } from "./videoIdUtils";
@@ -40,6 +41,10 @@ let frameRate: number = 30;
 
 export function setupVideoModule() {
     setupCleanupListener();
+    logLifecycle("video/setupModule", {
+        url: window.location.href,
+        hidden: document.hidden,
+    });
 
     // Direct Links after the config is loaded
     void waitFor(() => Config.isReady(), 1000, 1)
@@ -101,9 +106,19 @@ export async function checkVideoIDChange(): Promise<boolean> {
 
 async function videoIDChange(id: NewVideoID | null): Promise<boolean> {
     detectPageType();
+    logLifecycle("video/videoIDChange:incoming", {
+        previousVideoID: videoID,
+        nextVideoID: id,
+        pageType: getPageType(),
+        videoVisible: isVisible(video),
+        video: describeVideo(video),
+    });
 
     // don't switch to invalid value
     if (!id && videoID) {
+        logLifecycle("video/videoIDChange:ignoredInvalid", {
+            previousVideoID: videoID,
+        });
         return false;
     }
 
@@ -112,11 +127,22 @@ async function videoIDChange(id: NewVideoID | null): Promise<boolean> {
         getContentApp().bus.emit(CONTENT_EVENTS.VIDEO_ID_CHANGED, { videoID: id }, { source: "utils/video.videoIDChange.refresh" });
     }
     //if the id has not changed return unless the video element has changed
-    if (videoID === id && (isVisible(video) || !video)) return false;
+    if (videoID === id && (isVisible(video) || !video)) {
+        logLifecycle("video/videoIDChange:ignoredSameId", {
+            videoID: id,
+            hasVideo: Boolean(video),
+            videoVisible: isVisible(video),
+        });
+        return false;
+    }
 
     // Make sure the video is still visible
     if (!isVisible(video)) {
-        void refreshVideoAttachments();
+        logLifecycle("video/videoIDChange:refreshAttachmentsRequested", {
+            reason: "videoNotVisible",
+            video: describeVideo(video),
+        });
+        void refreshVideoAttachments("videoIDChange");
     }
 
     resetValues();
@@ -131,6 +157,10 @@ async function videoIDChange(id: NewVideoID | null): Promise<boolean> {
     // Update whitelist data when the video data is loaded
     void whitelistCheck();
 
+    logLifecycle("video/videoIDChange:emitting", {
+        videoID: id,
+        pageType: getPageType(),
+    });
     getContentApp().bus.emit(CONTENT_EVENTS.VIDEO_ID_CHANGED, { videoID: id }, { source: "utils/video.videoIDChange" });
 
     return true;
@@ -262,14 +292,35 @@ function setupVideoMutationListener() {
 
         lastMutationListenerCheck = Date.now();
         const mainVideoObject = getElement("#bilibili-player", true);
-        if (!mainVideoObject) return;
+        if (!mainVideoObject) {
+            logLifecycle("video/setupMutationListener:missingPlayerRoot", {
+                playerRoot: describeSelector("#bilibili-player"),
+            });
+            return;
+        }
 
         const videoContainer = mainVideoObject.querySelector(".bpx-player-video-wrap") as HTMLElement;
-        if (!videoContainer) return;
+        if (!videoContainer) {
+            logLifecycle("video/setupMutationListener:missingVideoContainer", {
+                playerRoot: describeElement(mainVideoObject),
+            });
+            return;
+        }
 
         if (videoMutationObserver) videoMutationObserver.disconnect();
-        videoMutationObserver = new MutationObserver(refreshVideoAttachments);
+        videoMutationObserver = new MutationObserver((mutations) => {
+            logLifecycle("video/mutationObserver:mutations", {
+                mutationCount: mutations.length,
+                addedNodes: mutations.reduce((total, mutation) => total + mutation.addedNodes.length, 0),
+                removedNodes: mutations.reduce((total, mutation) => total + mutation.removedNodes.length, 0),
+                videoContainer: describeElement(videoContainer),
+            });
+            void refreshVideoAttachments("mutationObserver");
+        });
         videoMutationListenerElement = videoContainer;
+        logLifecycle("video/setupMutationListener:attached", {
+            videoContainer: describeElement(videoContainer),
+        });
 
         videoMutationObserver.observe(videoContainer, {
             attributes: true,
@@ -292,14 +343,22 @@ export function waitForVideo(): Promise<HTMLVideoElement> {
 let embedLastUrl = "";
 let waitingForEmbed = false;
 
-async function refreshVideoAttachments(): Promise<void> {
+async function refreshVideoAttachments(trigger = "unknown"): Promise<void> {
     if (waitingForNewVideo) return;
 
     void updateFrameRate();
 
     waitingForNewVideo = true;
+    logLifecycle("video/refreshAttachments:waitingForVideo", {
+        trigger,
+        playerRoot: describeSelector("#bilibili-player"),
+    });
     const newVideo = (await waitForElement("#bilibili-player video", false)) as HTMLVideoElement;
     waitingForNewVideo = false;
+    logLifecycle("video/refreshAttachments:resolved", {
+        trigger,
+        video: describeVideo(newVideo),
+    });
 
     if (video === newVideo) return;
 
@@ -309,6 +368,11 @@ async function refreshVideoAttachments(): Promise<void> {
     if (isNewVideo) {
         videosSetup.push(video);
     }
+    logLifecycle("video/refreshAttachments:changed", {
+        trigger,
+        isNewVideo,
+        video: describeVideo(video),
+    });
 
     getContentApp().bus.emit(
         CONTENT_EVENTS.VIDEO_ELEMENT_CHANGED,
@@ -410,7 +474,10 @@ export function getVideo(): HTMLVideoElement | null {
 
     if (!isVisible(video) && Date.now() - lastRefresh > 500) {
         lastRefresh = Date.now();
-        void refreshVideoAttachments();
+        logLifecycle("video/getVideo:refreshRequested", {
+            video: describeVideo(video),
+        });
+        void refreshVideoAttachments("getVideo");
     }
 
     return video;

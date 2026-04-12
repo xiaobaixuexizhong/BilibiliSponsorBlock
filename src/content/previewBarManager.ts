@@ -4,13 +4,14 @@ import { VoteResponse } from "../messageTypes";
 import { ChapterVote } from "../render/ChapterVote";
 import { ActionType, BVID, Category, SegmentUUID, SponsorHideType } from "../types";
 import Utils from "../utils";
-import { waitFor } from "../utils/";
 import { findValidElement } from "../utils/dom";
 import { getFormattedTime } from "../utils/formating";
+import { describeElement, describeSelector, describeVideo, logLifecycle } from "../utils/logger";
 import { getHashParams } from "../utils/pageUtils";
 import { getVideo, getVideoID } from "../utils/video";
 import { getContentApp } from "./app";
 import { CONTENT_EVENTS } from "./app/events";
+import { isPlayerUiReady, waitForPlayerUiReady } from "./playerUi";
 import { contentState } from "./state";
 
 const utils = new Utils();
@@ -84,6 +85,16 @@ export function createPreviewBar(): void {
     const app = getContentApp();
     const { previewBar } = app.ui.getState();
     if (previewBar !== null) return;
+    if (!isPlayerUiReady()) {
+        void waitForPlayerUiReady().then(() => createPreviewBar()).catch(() => undefined);
+        return;
+    }
+
+    logLifecycle("previewBar/create:start", {
+        progress: describeSelector(".bpx-player-progress"),
+        progressSchedule: describeSelector(".bpx-player-progress-schedule"),
+        shadowProgress: describeSelector(".bpx-player-shadow-progress-area"),
+    });
 
     const progressElementOptions = [
         {
@@ -103,6 +114,10 @@ export function createPreviewBar(): void {
             const chapterVote = new ChapterVote(voteAsync);
             const nextPreviewBar = new PreviewBar(parent, shadowParent, chapterVote);
             app.ui.patchState({ previewBar: nextPreviewBar });
+            logLifecycle("previewBar/create:mounted", {
+                parent: describeElement(parent),
+                shadowParent: describeElement(shadowParent),
+            });
             updatePreviewBar();
             break;
         }
@@ -151,6 +166,11 @@ export function updatePreviewBar(): void {
         previewBarSegments.filter((segment) => segment.actionType !== ActionType.Full),
         getVideo()?.duration
     );
+    logLifecycle("previewBar/update", {
+        segmentCount: previewBarSegments.length,
+        selectedSegment,
+        video: describeVideo(getVideo()),
+    });
     if (getVideo()) updateActiveSegment(getVideo().currentTime);
 
     void app.commands.execute("ui/updatePlayerButtons", undefined);
@@ -171,12 +191,15 @@ export function checkPreviewbarState(): void {
     const app = getContentApp();
     const { previewBar } = app.ui.getState();
     if (previewBar && !utils.findReferenceNode()?.contains(previewBar.container)) {
+        logLifecycle("previewBar/checkState:detached", {
+            container: describeElement(previewBar.container),
+        });
         previewBar.remove();
         app.ui.patchState({ previewBar: null });
         removeDurationAfterSkip();
     }
 
-    waitFor(() => !document.hidden, 24 * 60 * 60, 500).then(createPreviewBar);
+    void waitForPlayerUiReady().then(() => createPreviewBar()).catch(() => undefined);
 }
 
 export function selectSegment(UUID: SegmentUUID): void {
