@@ -37,7 +37,6 @@ export function durationChangeListener(event?: Event): void {
     if (!video) return;
 
     getContentApp().bus.emit(CONTENT_EVENTS.PLAYER_DURATION_CHANGED, { video }, { source: "videoListeners.durationChange" });
-    void getContentApp().commands.execute("ui/updatePreviewBar", undefined);
 }
 
 /**
@@ -49,9 +48,6 @@ export function videoOnReadyListener(event?: Event): void {
     if (!video) return;
 
     getContentApp().bus.emit(CONTENT_EVENTS.PLAYER_VIDEO_READY, { video }, { source: "videoListeners.videoOnReady" });
-    void getContentApp().commands.execute("ui/createPreviewBar", undefined);
-    void getContentApp().commands.execute("ui/updatePreviewBar", undefined);
-    void getContentApp().commands.execute("ui/updatePlayerButtons", undefined);
 }
 
 export function setupVideoListeners(video: HTMLVideoElement): void {
